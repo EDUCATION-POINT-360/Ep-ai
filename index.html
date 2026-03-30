@@ -67,6 +67,23 @@
         
         .thinking-tag { font-size: 10px; font-weight: 800; letter-spacing: 2px; opacity: 0.2; text-transform: uppercase; animation: pulse 1.5s infinite; }
         @keyframes pulse { 50% { opacity: 0.6; } }
+        /* Poori site par selection khatam */
+* {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    pointer-events: auto;
+}
+
+/* Images ko drag ya save karne se rokna */
+img {
+    pointer-events: none;
+    user-drag: none;
+                       }
+        
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -264,5 +281,43 @@
         function scrollToBottom() { const s = document.getElementById('scroller'); s.scrollTop = s.scrollHeight; }
         document.getElementById('ai-input').oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; checkLang(this); };
     </script>
+    <script> 
+    (function() {
+    // 1. Anti-Debugger (Console kholte hi debugger pause ho jayega)
+    setInterval(function() {
+        debugger;
+    }, 100);
+
+    // 2. Self-Defending (Agar koi code ko format ya change karega toh crash ho jayega)
+    const check = function() {
+        const test = function() {
+            if (typeof window !== 'undefined') return window;
+        };
+        try {
+            const result = test();
+            if (!result) return;
+        } catch (e) {
+            return;
+        }
+    };
+    setInterval(check, 1000);
+
+    // 3. Disable Shortcuts (Ctrl+U, Ctrl+Shift+I, F12)
+    window.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'i' || e.key === 'j')) {
+            e.preventDefault();
+        }
+        if (e.keyCode == 123) { e.preventDefault(); }
+    });
+})();
+    </script>
+    <script>
+    var authorizedDomain = "https://edupointai.netlify.app/"; // Yahan apni domain likhein
+    if (window.location.hostname !== authorizedDomain) {
+        document.body.innerHTML = "<h1>Unauthorized Access!</h1><p>This code is protected.</p>";
+        window.location.href = "https://google.com"; // Redirect kar dega
+    }
+    </script>
+    
 </body>
 </html>

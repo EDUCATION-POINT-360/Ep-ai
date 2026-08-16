@@ -1,0 +1,21 @@
+{
+  "name": "Education Point AI",
+  "short_name": "EP AI",
+  "description": "Education Point AI — Modern AI learning assistant",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#0b0b0f",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

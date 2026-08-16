@@ -25,20 +25,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap"
       rel="stylesheet">
 
-<link rel="manifest" href="manifest.json">
+
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EP AI">
 <link rel="apple-touch-icon" href="logo.png">
 
-<script>
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
-    });
-}
-</script>
+
 
 <style>
 
@@ -1460,38 +1454,6 @@ select{
             <div>
 
                 <div class="setting-label">
-                    AI Model
-                </div>
-
-                <div class="setting-description">
-                    OpenRouter first, Ollama fallback
-                </div>
-
-            </div>
-
-            <select id="modelSelect">
-
-                <option value="auto">
-                    Auto — OpenRouter + Ollama
-                </option>
-
-                <option value="openrouter/free">
-                    OpenRouter Free AI
-                </option>
-
-                <option value="ollama/gpt-oss:120b">
-                    Ollama Cloud AI
-                </option>
-
-            </select>
-
-        </div>
-
-        <div class="setting-row">
-
-            <div>
-
-                <div class="setting-label">
                     Enter to send
                 </div>
 
@@ -1540,7 +1502,6 @@ select{
 
    Never publish real API keys in frontend JavaScript.
 
-   The Ollama key supplied in the previous message has been
    intentionally NOT included here because it is exposed.
 
    Revoke that key and create a new one.
@@ -1549,29 +1510,15 @@ select{
    your backend/proxy.
 */
 
-const OPENROUTER_API_KEY =
-    "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";
+const GROUP_API_URL = "PASTE_YOUR_GROUP_API_ENDPOINT_HERE";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const OLLAMA_API_KEY =
-    "604c59d1b0254b2480e44a44c8e5dc0f.OagY2vzl-5desQtcLqbjy-OZ";
+const OPENROUTER_API_KEY = "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";
+const GROQ_API_KEY = "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";
 
-
-/* =========================================================
-   DEFAULT PROVIDERS
-========================================================= */
-
-const DEFAULT_MODEL =
-    "openrouter/free";
-
-const OLLAMA_MODEL =
-    "gpt-oss:120b";
-
-const OPENROUTER_URL =
-    "https://openrouter.ai/api/v1/chat/completions";
-
-const OLLAMA_URL =
-    "https://ollama.com/api/chat";
-
+const DEFAULT_MODEL = "openrouter/free";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 
 /* =========================================================
    STATE
@@ -1583,6 +1530,7 @@ let controller = null;
 let generating = false;
 let recognition = null;
 let currentConversationId = null;
+let toastTimer = null;
 
 let activeProvider = "auto";
 
@@ -1653,14 +1601,6 @@ document.addEventListener(
         normalizeStoredModel();
 
         renderHistory();
-
-        const modelSelect =
-            document.getElementById(
-                "modelSelect"
-            );
-
-        modelSelect.value =
-            "auto";
 
         document
             .getElementById("modelLabel")
@@ -1843,43 +1783,18 @@ function closeSidebar(){
 ========================================================= */
 
 function openSettings(){
-
-    document
-        .getElementById("settingsModal")
-        .classList.add("show");
-
-    document
-        .getElementById("themeSelect")
-        .value =
-            localStorage.getItem(
-                "ep_theme"
-            ) || "dark";
-
-    const savedModel =
-        localStorage.getItem(
-            "ep_model"
-        ) || "auto";
-
-    document
-        .getElementById("modelSelect")
-        .value =
-            [
-                "auto",
-                "openrouter/free",
-                "ollama/gpt-oss:120b"
-            ].includes(savedModel)
-                ? savedModel
-                : "auto";
-
+    const modal=document.getElementById("settingsModal");
+    if(!modal) return;
+    modal.classList.add("show");
+    const theme=document.getElementById("themeSelect");
+    if(theme){
+        theme.value=localStorage.getItem("ep_theme") || "dark";
+    }
 }
 
-
 function closeSettings(){
-
-    document
-        .getElementById("settingsModal")
-        .classList.remove("show");
-
+    const modal=document.getElementById("settingsModal");
+    if(modal) modal.classList.remove("show");
 }
 
 
@@ -2675,11 +2590,10 @@ function cleanAIResponse(
             ""
         )
 
-        .replace(
-            /\n{4,}/g,
-            "\n\n"
-        )
-
+        .replace(/\\n/g, "\n")
+        .replace(/\r\n/g, "\n")
+        .replace(/\n{2,}/g, "\n")
+        .replace(/[ \t]+\n/g, "\n")
         .trim();
 
 }
@@ -2837,315 +2751,130 @@ function buildOpenRouterMessages(
 
 
 /* =========================================================
-   BUILD OLLAMA MESSAGES
 ========================================================= */
 
-function buildOllamaMessages(
-    text,
-    files
-){
 
-    const apiMessages = [
-
-        {
-            role:
-                "system",
-
-            content:
-                EP_SYSTEM_PROMPT
-
-        }
-
-    ];
-
-
-    const previous =
-        messages.slice(
-            0,
-            -1
-        ).slice(
-            -19
-        );
-
-
-    previous.forEach(
-        message => {
-
-            apiMessages.push({
-
-                role:
-                    message.role,
-
-                content:
-                    message.content
-
-            });
-
-        }
-    );
-
-
-    const userMessage = {
-
-        role:
-            "user",
-
-        content:
-            text ||
-            "Please analyze the attached files."
-
-    };
-
-
-    /*
-       Ollama native image format.
-       It expects base64 image data without
-       the data:image/... prefix.
-    */
-
-    const images =
-        files
-            .filter(
-                file =>
-                    file.type &&
-                    file.type.startsWith(
-                        "image/"
-                    )
-            )
-            .map(
-                file => {
-
-                    const comma =
-                        file.data.indexOf(
-                            ","
-                        );
-
-                    return comma >= 0
-                        ? file.data.slice(
-                            comma + 1
-                        )
-                        : file.data;
-
-                }
-            );
-
-
-    if(images.length){
-
-        userMessage.images =
-            images;
-
-    }
-
-
-    apiMessages.push(
-        userMessage
-    );
-
-
-    return apiMessages;
-
-}
 
 
 /* =========================================================
    REQUEST AI — AUTO FALLBACK
 ========================================================= */
 
-async function requestAI(
-    text,
-    files,
-    aiElement
-){
+/* =========================================================
+   GROUP API REQUEST
+========================================================= */
 
-    generating = true;
-
-    activeAIElement =
-        aiElement;
-
-    sendBtn.style.display =
-        "none";
-
-    stopBtn.style.display =
-        "flex";
-
-
-    const selected =
-        document
-            .getElementById(
-                "modelSelect"
-            )
-            .value ||
-        "auto";
-
-
-    /*
-       AUTO:
-       OpenRouter first.
-       Ollama only if OpenRouter fails.
-    */
-
-    if(selected === "auto"){
-
-        try{
-
-            await requestOpenRouter(
-                text,
-                files,
-                aiElement
-            );
-
-            return;
-
-        }catch(openRouterError){
-
-            if(
-                openRouterError?.name ===
-                "AbortError"
-            ){
-
-                return;
-
-            }
-
-
-            console.warn(
-                "OpenRouter failed. Falling back to Ollama.",
-                openRouterError
-            );
-
-
-            toast(
-                "OpenRouter unavailable — switching to Ollama"
-            );
-
-
-            try{
-
-                await requestOllama(
-                    text,
-                    files,
-                    aiElement
-                );
-
-                return;
-
-            }catch(ollamaError){
-
-                if(
-                    ollamaError?.name ===
-                    "AbortError"
-                ){
-
-                    return;
-
-                }
-
-
-                /*
-                   Both providers failed.
-                */
-
-                updateAIMessage(
-                    aiElement,
-
-                    "I could not complete your request.\n\n" +
-
-                    "OpenRouter: " +
-
-                    friendlyError(
-                        openRouterError
-                    ) +
-
-                    "\n\n" +
-
-                    "Ollama: " +
-
-                    friendlyError(
-                        ollamaError
-                    )
-                );
-
-                return;
-
-            }
-
-        }
-
+async function requestGroup(text, files, aiElement){
+    if(!GROUP_API_URL || GROUP_API_URL.includes("PASTE_YOUR_GROUP_API_ENDPOINT_HERE")){
+        throw new Error("Group API is not configured.");
     }
 
+    activeProvider = "group";
+    document.getElementById("modelLabel").textContent = "EP AI";
+    controller = new AbortController();
 
-    /*
-       Manual Ollama.
-    */
+    const response = await fetch(GROUP_API_URL, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            messages: buildOpenRouterMessages(text, files),
+            stream: true
+        })
+    });
 
-    if(
-        selected.startsWith(
-            "ollama/"
-        )
-    ){
-
+    if(!response.ok){
+        let message = "";
         try{
+            const data = await response.json();
+            message = data?.error?.message || data?.error || data?.message || "";
+        }catch{}
+        throw new Error(message || `Group API HTTP ${response.status}`);
+    }
 
-            await requestOllama(
-                text,
-                files,
-                aiElement
-            );
-
-        }catch(error){
-
-            if(
-                error?.name ===
-                "AbortError"
-            )
-                return;
-
-            updateAIMessage(
-                aiElement,
-                friendlyError(
-                    error
-                )
-            );
-
-        }
-
+    const contentType = response.headers.get("content-type") || "";
+    if(contentType.includes("text/event-stream") && response.body){
+        await consumeOpenRouterStream(response, aiElement);
         return;
-
     }
 
-
-    /*
-       Manual OpenRouter.
-    */
-
-    try{
-
-        await requestOpenRouter(
-            text,
-            files,
-            aiElement
-        );
-
-    }catch(error){
-
-        if(
-            error?.name ===
-            "AbortError"
-        )
-            return;
-
-        updateAIMessage(
-            aiElement,
-            friendlyError(
-                error
-            )
-        );
-
-    }
-
+    const data = await response.json();
+    const textOut = data?.choices?.[0]?.message?.content ||
+                    data?.choices?.[0]?.text ||
+                    data?.output_text ||
+                    data?.response ||
+                    data?.message?.content ||
+                    data?.message ||
+                    "";
+    if(!textOut) throw new Error("Group API returned an empty response.");
+    updateAIMessage(aiElement, textOut);
 }
 
+/* =========================================================
+   REQUEST AI — AUTO FALLBACK
+========================================================= */
+
+async function requestAI(text, files, aiElement){
+    generating = true;
+    activeAIElement = aiElement;
+    sendBtn.style.display = "none";
+    stopBtn.style.display = "flex";
+
+    const finish = () => {
+        generating = false;
+        controller = null;
+        activeAIElement = null;
+        sendBtn.style.display = "flex";
+        stopBtn.style.display = "none";
+    };
+
+    let groupError = null;
+    let openRouterError = null;
+
+    try{
+        await requestGroup(text, files, aiElement);
+        finish();
+        return;
+    }catch(error){
+        if(error?.name === "AbortError"){ finish(); return; }
+        groupError = error;
+        console.warn("Group API unavailable; trying OpenRouter.", error);
+    }
+
+    if(OPENROUTER_API_KEY && !OPENROUTER_API_KEY.includes("PASTE_YOUR_OPENROUTER_API_KEY_HERE")){
+        try{
+            await requestOpenRouter(text, files, aiElement);
+            finish();
+            return;
+        }catch(error){
+            if(error?.name === "AbortError"){ finish(); return; }
+            openRouterError = error;
+            console.warn("OpenRouter failed; trying Groq Cloud.", error);
+        }
+    }
+
+    if(GROQ_API_KEY && !GROQ_API_KEY.includes("PASTE_YOUR_GROQ_CLOUD_API_KEY_HERE")){
+        try{
+            await requestGroq(text, files, aiElement);
+            finish();
+            return;
+        }catch(error){
+            if(error?.name === "AbortError"){ finish(); return; }
+            updateAIMessage(
+                aiElement,
+                "I could not complete your request. " +
+                "Group API: " + friendlyError(groupError) + " | " +
+                "OpenRouter: " + (openRouterError ? friendlyError(openRouterError) : "Unavailable") + " | " +
+                "Groq Cloud: " + friendlyError(error)
+            );
+            finish();
+            return;
+        }
+    }
+
+    updateAIMessage(aiElement, "I could not connect to an AI provider. Please try again.");
+    finish();
+}
 
 /* =========================================================
    OPENROUTER REQUEST
@@ -3157,17 +2886,8 @@ async function requestOpenRouter(
     aiElement
 ){
 
-    if(
-        !OPENROUTER_API_KEY ||
-        OPENROUTER_API_KEY.includes(
-            "YOUR_NEW_"
-        )
-    ){
-
-        throw new Error(
-            "OpenRouter API key is not configured."
-        );
-
+    if(!OPENROUTER_API_KEY){
+        throw new Error("OpenRouter API key is not configured in this single-file build.");
     }
 
 
@@ -3299,150 +3019,52 @@ async function requestOpenRouter(
 
 
 /* =========================================================
-   OLLAMA REQUEST
+   GROQ CLOUD REQUEST
 ========================================================= */
 
-async function requestOllama(
-    text,
-    files,
-    aiElement
-){
-
-    if(
-        !OLLAMA_API_KEY ||
-        OLLAMA_API_KEY.includes(
-            "YOUR_NEW_"
-        )
-    ){
-
-        throw new Error(
-            "Ollama API key is not configured."
-        );
-
+async function requestGroq(text, files, aiElement){
+    if(!GROQ_API_KEY || GROQ_API_KEY.includes("PASTE_YOUR_GROQ_CLOUD_API_KEY_HERE")){
+        throw new Error("Groq Cloud is not configured.");
     }
 
+    activeProvider = "groq";
+    document.getElementById("modelLabel").textContent = "Groq Cloud";
+    controller = new AbortController();
 
-    activeProvider =
-        "ollama";
-
-
-    document
-        .getElementById(
-            "modelLabel"
-        )
-        .textContent =
-            "Ollama AI";
-
-
-    controller =
-        new AbortController();
-
-
-    const apiMessages =
-        buildOllamaMessages(
-            text,
-            files
-        );
-
-
-    const response =
-        await fetch(
-            OLLAMA_URL,
-            {
-
-                method:
-                    "POST",
-
-                signal:
-                    controller.signal,
-
-                headers:{
-
-                    "Authorization":
-                        "Bearer " +
-                        OLLAMA_API_KEY,
-
-                    "Content-Type":
-                        "application/json"
-
-                },
-
-                body:
-                    JSON.stringify({
-
-                        model:
-                            OLLAMA_MODEL,
-
-                        messages:
-                            apiMessages,
-
-                        stream:
-                            true,
-
-                        options:{
-
-                            temperature:
-                                .65
-
-                        }
-
-                    })
-
-            }
-        );
-
+    const response = await fetch(GROQ_URL, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+            "Authorization": "Bearer " + GROQ_API_KEY,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            model: GROQ_MODEL,
+            messages: buildOpenRouterMessages(text, files),
+            stream: true,
+            temperature: 0.65,
+            max_completion_tokens: 4096
+        })
+    });
 
     if(!response.ok){
-
-        let errorText =
-            "";
-
+        let message = "";
         try{
-
-            const data =
-                await response.json();
-
-            errorText =
-                data?.error ||
-                data?.message ||
-                "";
-
+            const data = await response.json();
+            message = data?.error?.message || data?.error?.code || data?.message || "";
         }catch{}
-
-
-        const error =
-            new Error(
-                errorText ||
-                `Ollama HTTP ${response.status}`
-            );
-
-        error.provider =
-            "ollama";
-
-        error.status =
-            response.status;
-
+        const error = new Error(message || `Groq Cloud HTTP ${response.status}`);
+        error.provider = "groq";
+        error.status = response.status;
         throw error;
-
     }
-
 
     if(!response.body){
-
-        throw new Error(
-            "Ollama streaming is not supported."
-        );
-
+        throw new Error("Groq Cloud returned no response body.");
     }
 
-
-    await consumeOllamaStream(
-        response,
-        aiElement
-    );
-
+    await consumeOpenRouterStream(response, aiElement);
 }
-
 
 /* =========================================================
    OPENROUTER STREAM
@@ -3641,179 +3263,6 @@ async function consumeOpenRouterStream(
 
         throw new Error(
             "OpenRouter returned an empty response."
-        );
-
-    }
-
-
-    finishAIResponse(
-        fullText
-    );
-
-}
-
-
-/* =========================================================
-   OLLAMA NDJSON STREAM
-========================================================= */
-
-async function consumeOllamaStream(
-    response,
-    aiElement
-){
-
-    const reader =
-        response.body.getReader();
-
-    const decoder =
-        new TextDecoder(
-            "utf-8"
-        );
-
-    let buffer =
-        "";
-
-    let fullText =
-        "";
-
-
-    while(true){
-
-        const result =
-            await reader.read();
-
-        if(result.done)
-            break;
-
-
-        buffer +=
-            decoder.decode(
-                result.value,
-                {
-                    stream:
-                        true
-                }
-            );
-
-
-        const lines =
-            buffer.split(
-                /\r?\n/
-            );
-
-
-        buffer =
-            lines.pop() ||
-            "";
-
-
-        for(
-            const line of lines
-        ){
-
-            const clean =
-                line.trim();
-
-
-            if(!clean)
-                continue;
-
-
-            try{
-
-                const data =
-                    JSON.parse(
-                        clean
-                    );
-
-
-                const delta =
-                    data
-                        ?.message
-                        ?.content;
-
-
-                if(
-                    typeof delta ===
-                    "string"
-                ){
-
-                    fullText +=
-                        delta;
-
-                    queueStreamRender(
-                        aiElement,
-                        fullText
-                    );
-
-                }
-
-
-                if(data.done)
-                    break;
-
-            }catch{
-
-                /*
-                   Ignore incomplete NDJSON chunks.
-                */
-
-            }
-
-        }
-
-    }
-
-
-    /*
-       Process remaining data.
-    */
-
-    if(buffer.trim()){
-
-        try{
-
-            const data =
-                JSON.parse(
-                    buffer.trim()
-                );
-
-            const delta =
-                data
-                    ?.message
-                    ?.content;
-
-            if(
-                typeof delta ===
-                "string"
-            ){
-
-                fullText +=
-                    delta;
-
-            }
-
-        }catch{}
-
-    }
-
-
-    flushStreamRender(
-        aiElement,
-        fullText
-    );
-
-
-    fullText =
-        cleanAIResponse(
-            fullText
-        );
-
-
-    if(!fullText){
-
-        throw new Error(
-            "Ollama returned an empty response."
         );
 
     }
@@ -4087,7 +3536,7 @@ function friendlyError(
 
 
     return (
-        "I could not complete your request.\n\n" +
+        "I could not complete your request.\n" +
         message
     );
 
@@ -5332,20 +4781,12 @@ function scrollBottom(
    TOAST
 ========================================================= */
 
-let toastTimer =
-    null;
-
-
 function toast(text){
 
-    const el =
-        document.getElementById(
-            "toast"
-        );
+    const el = document.getElementById("toast");
+    if(!el) return;
 
-
-    el.textContent =
-        text;
+    el.textContent = String(text || "");
 
 
     el.classList.add(
@@ -5466,62 +4907,6 @@ document.addEventListener(
 
     }
 );
-
-
-/* =========================================================
-   MODEL SELECT
-========================================================= */
-
-document
-    .getElementById(
-        "modelSelect"
-    )
-    .addEventListener(
-        "change",
-        function(){
-
-            const selected =
-                this.value;
-
-
-            localStorage.setItem(
-                "ep_model",
-                selected
-            );
-
-
-            const label =
-                document.getElementById(
-                    "modelLabel"
-                );
-
-
-            if(
-                selected ===
-                "auto"
-            ){
-
-                label.textContent =
-                    "Auto AI";
-
-            }else if(
-                selected.startsWith(
-                    "ollama/"
-                )
-            ){
-
-                label.textContent =
-                    "Ollama AI";
-
-            }else{
-
-                label.textContent =
-                    "OpenRouter Free";
-
-            }
-
-        }
-    );
 
 
 /* =========================================================

@@ -1,0 +1,18 @@
+{
+  "name": "ep-ai-multi-api",
+  "version": "1.0.0",
+  "description": "Education Point AI with Gemini, Groq and OpenRouter automatic fallback",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0"
+  }
+}

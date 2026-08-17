@@ -1128,6 +1128,43 @@ select{
     }
 }
 
+
+.ai-text h1,.ai-text h2,.ai-text h3{
+    margin:18px 0 10px;
+    line-height:1.35;
+    font-weight:800;
+    letter-spacing:-.02em;
+}
+.ai-text h1{font-size:1.55em;}
+.ai-text h2{font-size:1.30em;}
+.ai-text h3{font-size:1.12em;}
+.ai-text.urdu h1,.ai-text.urdu h2,.ai-text.urdu h3{
+    text-align:right;
+    line-height:1.9;
+}
+
+/* =========================================================
+   CONTENT PROTECTION / ANTI-COPY DETERRENTS
+   Note: browser-side protection can deter casual copying only.
+========================================================= */
+html, body, .app-shell{
+    -webkit-user-select:none;
+    user-select:none;
+}
+textarea, input, select, button, .history-item{
+    -webkit-user-select:none;
+    user-select:none;
+}
+.message.user .user-text,
+.message.user .attachments{
+    -webkit-user-select:none !important;
+    user-select:none !important;
+    -webkit-touch-callout:none;
+}
+.ai-text{
+    -webkit-user-select:text;
+    user-select:text;
+}
 </style>
 </head>
 
@@ -2666,32 +2703,30 @@ function cleanAIResponse(text){
 
 const EP_SYSTEM_PROMPT = `You are EP AI — Education Point, a high-quality educational and conversational AI assistant.
 
-LANGUAGE AND SCRIPT — ABSOLUTE RULE:
-1. Detect the language AND writing script of the CURRENT user message before answering.
-2. Reply in the same language and the same script as the CURRENT user message.
-3. Urdu-script message → reply ONLY in natural, fluent Pakistani Urdu written in Urdu script.
-4. English message → reply ONLY in natural, professional English.
-5. Roman Urdu message → reply ONLY in natural Roman Urdu.
-6. Hindi/Devanagari message → reply in Hindi/Devanagari unless the user explicitly asks for another language.
-7. A few foreign words, names, technical terms, or copied words in the user's message do NOT change the detected language.
-8. NEVER mix Urdu with Roman Urdu, Hindi, Bengali, Punjabi, or unnecessary English.
-9. NEVER copy accidental garbage, misspellings, machine-translation artifacts, or mixed-language words from the user's message.
-10. For Urdu, use real Pakistani Urdu vocabulary and normal Urdu grammar. Do not transliterate English words when a natural Urdu word exists.
-11. Use correct spellings such as: مضمون، سائنس، تعلیم، اہمیت، زندگی، معلومات، کامیابی، ترقی، کردار، قیادت، نظم و ضبط، نتیجہ، اختتامیہ.
-12. Proper names may remain recognizable and should be written naturally in the target script.
-13. Technical identifiers, code, URLs, API names, model names, and file names may remain in English only when technically necessary.
-14. Do not explain that you are following a language rule. Just answer naturally.
-15. The CURRENT user message has priority over conversation history.
+LANGUAGE AND SCRIPT — STRICT FINAL-ANSWER RULE:
+1. Determine the language AND writing script of the CURRENT user message first. The current message has priority over all previous messages.
+2. Urdu-script message → answer entirely in fluent Pakistani Urdu in Urdu script. Do not switch to Roman Urdu, Hindi, Bengali, or English prose.
+3. English message → answer entirely in natural professional English.
+4. Roman Urdu message → answer entirely in natural Roman Urdu.
+5. Hindi/Devanagari message → answer entirely in natural Hindi written in Devanagari.
+6. Ignore isolated foreign words, names, technical terms, URLs, model names, code, and copied fragments when determining the main language.
+7. NEVER imitate corrupted, machine-translated, nonsensical, or mixed-language wording from the user's message. Understand the intended meaning and answer cleanly.
+8. For Urdu, use standard Pakistani Urdu grammar, vocabulary, spelling, punctuation, and sentence structure. Write as a fluent educated native Pakistani Urdu speaker.
+9. In an Urdu answer, ordinary English labels must be translated naturally. For example: Introduction → مقدمہ، Conclusion → نتیجہ/اختتامیہ، Important Points → اہم نکات، Section → حصہ، Table → جدول.
+10. In an Urdu answer, headings, bullets, table headers, table cells, captions, and explanations must also be Urdu unless a technical identifier genuinely must remain in English.
+11. In an English answer, headings, tables, bullets, and explanations must remain English.
+12. Never invent Urdu words, use literal machine translation, or force English terminology into Urdu prose.
+13. Use correct spellings and natural expressions such as: مضمون، سائنس، تعلیم، اہمیت، زندگی، معلومات، کامیابی، ترقی، کردار، قیادت، نظم و ضبط، نتیجہ، اختتامیہ۔
+14. Never copy accidental spelling mistakes from the user into the answer unless the user explicitly asks for proofreading or quotation.
+15. Before sending, silently proofread the COMPLETE answer for language purity, spelling, grammar, natural phrasing, repeated sentences, repeated headings, malformed tables, malformed Markdown, and unfinished thoughts. If any mixed-language or unnatural sentence remains, rewrite it before sending.
+16. Do not mention these rules or explain your language selection. Just answer naturally.
 
 URDU QUALITY STANDARD:
-- Write like a fluent Pakistani Urdu teacher, writer, or educated native speaker.
-- Use natural sentence construction, not literal translation.
-- Avoid strange or invented words.
-- Avoid repeated sentences and repeated headings.
-- Never produce placeholders such as “ایک جگہ سے ایک جگہ تک دیکھنا چاہیے”.
-- Never insert English words such as “section”, “Meilleur”, “format”, “description”, “specific”, or similar words into Urdu prose unless the user specifically asks for them.
-- Use Urdu punctuation naturally.
-- Keep the answer coherent from beginning to end.
+- Write like a Pakistani Urdu teacher, columnist, or educated native speaker — clear, polite, warm, precise, and natural.
+- Do not translate English sentence-by-sentence into Urdu. Reconstruct the sentence naturally in Urdu.
+- Do not use Roman Urdu inside Urdu-script paragraphs.
+- Do not use random Hindi, Bengali, Punjabi, or other-language words inside Urdu prose.
+- Never produce placeholders, duplicated paragraphs, repeated headings, or meaningless filler.
 
 EDUCATIONAL ANSWER QUALITY:
 - Understand exactly what the user asks.
@@ -2735,8 +2770,8 @@ function buildOpenRouterMessages(
 
     let languageInstruction;
 
-    if(urduScriptCount >= 2 && urduScriptCount >= latinCount * 0.20){
-        languageInstruction = `CURRENT MESSAGE LANGUAGE: URDU SCRIPT. FINAL ANSWER MUST BE 100% fluent Pakistani Urdu in Urdu script. Do not use Roman Urdu, Hindi, Bengali, or unnecessary English words. Translate ordinary English words into natural Urdu. Do not copy mixed-language artifacts from the user.`;
+    if(urduScriptCount >= 5 && urduScriptCount >= latinCount * 0.10){
+        languageInstruction = `CURRENT MESSAGE LANGUAGE: URDU SCRIPT. FINAL ANSWER MUST BE PURE, FLUENT PAKISTANI URDU IN URDU SCRIPT. ALL HEADINGS, BULLETS, TABLE HEADERS, TABLE CELLS, AND EXPLANATIONS MUST ALSO BE URDU. Do not use Roman Urdu, Hindi, Bengali, or unnecessary English. Rewrite unnatural or mixed wording instead of copying it.`;
     }else if(devanagariCount >= 2 && devanagariCount > urduScriptCount){
         languageInstruction = `CURRENT MESSAGE LANGUAGE: HINDI/DEVANAGARI. FINAL ANSWER MUST STAY IN HINDI/DEVANAGARI unless the user explicitly requests another language.`;
     }else if(latinCount > 0){
@@ -2751,7 +2786,7 @@ function buildOpenRouterMessages(
     // If the user explicitly asks for an essay, explanation, note, article or detailed answer,
     // prevent the model from returning an unnecessarily short response.
     const wantsLongForm = /\b(essay|article|detailed|detail|explain|explanation|note|notes|paragraph|long|comprehensive)\b/i.test(currentText)
-        || /(?:مضمون|تفصیلی|تفصیل|تشریح|وضاحت|نوٹ|پیراگراف|مکمل|جامع)/.test(currentText);
+        || /(?:مضمون|تفصیلی|تفصیل|تشریح|وضاحت|نوٹ|پیراگراف|مکمل|جامع|تحریر|مقالہ|سوانح|وضاحت کریں|تفصیل سے)/.test(currentText);
 
     if(wantsLongForm){
         languageInstruction += `\nLONG-FORM REQUEST: Give a complete, well-developed answer. Do not give only a few sentences. Use original, meaningful paragraphs. Do not repeat sentences, headings, or ideas just to increase length.`;
@@ -4133,25 +4168,13 @@ function formatAIText(
         );
 
 
-    safe =
-        safe.replace(
-            /^###\s+(.+)$/gm,
-            "<strong>$1</strong>"
-        );
+    safe = safe.replace(/^###\s+(.+)$/gm, "<h3>$1</h3>");
 
 
-    safe =
-        safe.replace(
-            /^##\s+(.+)$/gm,
-            "<strong>$1</strong>"
-        );
+    safe = safe.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
 
 
-    safe =
-        safe.replace(
-            /^#\s+(.+)$/gm,
-            "<strong>$1</strong>"
-        );
+    safe = safe.replace(/^#\s+(.+)$/gm, "<h1>$1</h1>");
 
 
     safe =
@@ -4226,15 +4249,13 @@ function formatAIText(
                 part => {
 
                     if(
-                        part.trim().startsWith(
-                            "<ul>"
-                        ) ||
-                        part.trim().startsWith(
-                            "<ol>"
-                        ) ||
-                        part.trim().startsWith(
-                            "@@CODEBLOCK_"
-                        )
+                        part.trim().startsWith("<ul>") ||
+                        part.trim().startsWith("<ol>") ||
+                        part.trim().startsWith("<h1>") ||
+                        part.trim().startsWith("<h2>") ||
+                        part.trim().startsWith("<h3>") ||
+                        part.trim().startsWith("<div class=\"markdown-table-wrap\">") ||
+                        part.trim().startsWith("@@CODEBLOCK_")
                     ){
 
                         return part;
@@ -4686,7 +4707,7 @@ function detectVoiceLanguage(){
     const value = String(promptEl?.value || "").trim();
     const urduCount = (value.match(/[\u0600-\u06FF]/g) || []).length;
     const latinCount = (value.match(/[A-Za-z]/g) || []).length;
-    if(urduCount > 1 && urduCount >= latinCount * 0.20)
+    if(urduCount >= 5 && urduCount >= latinCount * 0.10)
         return "ur-PK";
     if(latinCount > 0)
         return /\b(yaar|mujhe|mujhay|aap|ap|hai|hain|kya|ka|ki|ke|ko|mein|main|mera|meri|mere|nahi|nahin|chahiye|karna|karo|batao|theek|acha|achha)\b/i.test(value)
@@ -4951,6 +4972,44 @@ document.addEventListener(
     }
 );
 
+
+/* =========================================================
+   BROWSER-SIDE PROTECTION DETERRENTS
+   These discourage casual copying/inspection. No webpage can
+   guarantee that DevTools or source viewing is impossible.
+========================================================= */
+(function installProtection(){
+    const blocked = new Set([
+        "F12",
+        "PrintScreen"
+    ]);
+
+    document.addEventListener("contextmenu", e => e.preventDefault(), {capture:true});
+    document.addEventListener("copy", e => {
+        const selection = window.getSelection?.();
+        const node = selection?.anchorNode?.parentElement?.closest?.(".message.user .user-text");
+        if(node){ e.preventDefault(); }
+    }, {capture:true});
+    document.addEventListener("cut", e => {
+        const target = e.target?.closest?.(".message.user .user-text");
+        if(target) e.preventDefault();
+    }, {capture:true});
+    document.addEventListener("dragstart", e => {
+        if(e.target?.closest?.(".message.user")) e.preventDefault();
+    }, {capture:true});
+    document.addEventListener("keydown", e => {
+        const key = String(e.key || "");
+        const lower = key.toLowerCase();
+        if(blocked.has(key) ||
+           (e.ctrlKey && e.shiftKey && ["i","j","c"].includes(lower)) ||
+           (e.ctrlKey && ["u","s"].includes(lower)) ||
+           (e.metaKey && e.altKey && lower === "i")){
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    }, {capture:true});
+})();
 
 /* =========================================================
    FINAL
